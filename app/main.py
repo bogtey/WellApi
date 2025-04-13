@@ -6,12 +6,10 @@ from datetime import datetime
 from . import models, schemas
 from .database import SessionLocal, engine
 
-# Создание всех таблиц в базе данных
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Функция для получения сессии базы данных
 def get_db():
     db = SessionLocal()
     try:
@@ -19,18 +17,17 @@ def get_db():
     finally:
         db.close()
 
-# Функция для получения курсов валют
 async def fetch_currency_rates():
     url = "https://www.cbr.ru/scripts/XML_daily.asp"
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(url)
-            response.raise_for_status()  # Проверка на ошибки HTTP
+            response.raise_for_status() 
             root = ET.fromstring(response.text)
             date_str = root.attrib['Date']
             date_obj = datetime.strptime(date_str, "%d.%m.%Y").date()
 
-            with SessionLocal() as db:  # Используем контекст для управления сессией
+            with SessionLocal() as db:  
                 for valute in root.findall('Valute'):
                     currency_code = valute.find('CharCode').text
                     currency_name = valute.find('Name').text
@@ -53,11 +50,11 @@ async def fetch_currency_rates():
 
 @app.on_event("startup")
 async def startup_event():
-    await fetch_currency_rates()  # Вызываем функцию получения курсов валют при старте приложения
+    await fetch_currency_rates() 
 
 @app.get("/")
 async def read_root(db: Session = Depends(get_db)):
-    currency_rates = db.query(models.CurrencyRate).all()  # Получаем все курсы валют
+    currency_rates = db.query(models.CurrencyRate).all() 
     return currency_rates
 
 @app.get("/currency_rates/", response_model=list[schemas.CurrencyRate])
